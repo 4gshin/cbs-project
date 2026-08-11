@@ -119,5 +119,29 @@ rota.delete('/:id', async (istek, yanit) => {
     yanit.status(500).json({ hata: 'Nesne silinirken bir sorun olustu' });
   }
 });
+// Iki nesne arasindaki mekansal iliskiyi kontrol et (BONUS: ST_Intersects, ST_Within, ST_Touches)
+rota.get('/iliski/:id1/:id2', async (istek, yanit) => {
+  try {
+    const { id1, id2 } = istek.params;
+    const sonuc = await havuz.query(
+      `SELECT
+         ST_Intersects(a.geometri, b.geometri) AS kesisiyor,
+         ST_Within(a.geometri, b.geometri) AS icinde,
+         ST_Touches(a.geometri, b.geometri) AS temas_ediyor
+       FROM nesneler a, nesneler b
+       WHERE a.id = $1 AND b.id = $2`,
+      [id1, id2]
+    );
+
+    if (sonuc.rows.length === 0) {
+      return yanit.status(404).json({ hata: 'Nesnelerden biri bulunamadi' });
+    }
+
+    yanit.json(sonuc.rows[0]);
+  } catch (hata) {
+    console.error(hata);
+    yanit.status(500).json({ hata: 'Iliski kontrol edilirken bir sorun olustu' });
+  }
+});
 
 module.exports = rota;

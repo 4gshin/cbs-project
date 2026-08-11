@@ -48,6 +48,11 @@ export default function HaritaGorunumu() {
   const [cizimModu, setCizimModu] = useState<'yok' | 'Cizgi' | 'Poligon'>('yok');
   const [geciciNoktalar, setGeciciNoktalar] = useState<[number, number][]>([]);
 
+  // BONUS: mekansal iliski kontrolu icin secilen iki nesne ve sonuc
+  const [iliskiId1, setIliskiId1] = useState<string>('');
+  const [iliskiId2, setIliskiId2] = useState<string>('');
+  const [iliskiSonucu, setIliskiSonucu] = useState<any>(null);
+
   useEffect(() => {
     fetch(API_ADRESI)
       .then((yanit) => yanit.json())
@@ -212,8 +217,86 @@ export default function HaritaGorunumu() {
     }
   };
 
+  // BONUS: iki secili nesne arasindaki mekansal iliskiyi backend'den sorgula
+  const iliskiyiKontrolEt = async () => {
+    if (!iliskiId1 || !iliskiId2) {
+      window.alert('Lütfen iki nesne seç.');
+      return;
+    }
+    if (iliskiId1 === iliskiId2) {
+      window.alert('Farklı iki nesne seçmelisin.');
+      return;
+    }
+
+    try {
+      const yanit = await fetch(`${API_ADRESI}/iliski/${iliskiId1}/${iliskiId2}`);
+      const sonuc = await yanit.json();
+      setIliskiSonucu(sonuc);
+    } catch (hata) {
+      console.error('Iliski kontrol edilirken hata:', hata);
+    }
+  };
+
   return (
     <>
+      {/* BONUS: Mekansal iliski kontrol paneli */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 10,
+          right: 10,
+          zIndex: 1000,
+          background: 'white',
+          padding: '10px',
+          borderRadius: '6px',
+          boxShadow: '0 1px 5px rgba(0,0,0,0.4)',
+          width: '240px',
+        }}
+      >
+        <p style={{ margin: '0 0 6px 0', fontWeight: 700, color: '#111827', fontSize: '13px' }}>
+          Mekansal İlişki Kontrolü (Bonus)
+        </p>
+        <select
+          value={iliskiId1}
+          onChange={(olay) => setIliskiId1(olay.target.value)}
+          style={{ width: '100%', marginBottom: '6px', padding: '4px' }}
+        >
+          <option value="">1. Nesneyi Seç</option>
+          {nesneler.map((n) => (
+            <option key={n.id} value={n.id}>
+              {n.properties.ad} ({n.properties.tur})
+            </option>
+          ))}
+        </select>
+        <select
+          value={iliskiId2}
+          onChange={(olay) => setIliskiId2(olay.target.value)}
+          style={{ width: '100%', marginBottom: '6px', padding: '4px' }}
+        >
+          <option value="">2. Nesneyi Seç</option>
+          {nesneler.map((n) => (
+            <option key={n.id} value={n.id}>
+              {n.properties.ad} ({n.properties.tur})
+            </option>
+          ))}
+        </select>
+        <button onClick={iliskiyiKontrolEt} style={{ ...dugmeStili('#7c3aed'), width: '100%' }}>
+          İlişkiyi Kontrol Et
+        </button>
+
+        {iliskiSonucu && (
+          <div style={{ marginTop: '8px', fontSize: '13px', color: '#111827' }}>
+            <p style={{ margin: '2px 0' }}>{iliskiSonucu.kesisiyor ? '✅' : '❌'} Kesişiyor (ST_Intersects)</p>
+            <p style={{ margin: '2px 0' }}>
+              {iliskiSonucu.icinde ? '✅' : '❌'} 1. nesne 2.'nin içinde (ST_Within)
+            </p>
+            <p style={{ margin: '2px 0' }}>
+              {iliskiSonucu.temas_ediyor ? '✅' : '❌'} Temas ediyor (ST_Touches)
+            </p>
+          </div>
+        )}
+      </div>
+
       <div
         style={{
           position: 'absolute',
