@@ -5,8 +5,6 @@ import { MapContainer, TileLayer, Marker, Polyline, Polygon, Popup, useMapEvents
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Leaflet'in varsayilan marker ikonu Next.js ile dogru yuklenmedigi icin
-// ikonu elle, dısarıdan bir url ile tanimliyoruz
 const noktaIkonu = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
@@ -18,9 +16,6 @@ const noktaIkonu = new L.Icon({
 
 const API_ADRESI = 'http://localhost:5050/api/nesneler';
 
-// Bu kucuk bilesen haritaya tiklama olaylarini dinler.
-// useMapEvents sadece MapContainer'in ICINDE calisan bir bilesende kullanilabilir,
-// bu yuzden ayri bir bilesen olarak yazdik.
 function TiklamaDinleyici({
   onHaritayaTikla,
 }: {
@@ -38,7 +33,6 @@ export default function HaritaGorunumu() {
   const merkezKonum: [number, number] = [39.9334, 32.8597];
   const [nesneler, setNesneler] = useState<any[]>([]);
 
-  // Sayfa yuklendiginde backend'den nesneleri cek
   useEffect(() => {
     fetch(API_ADRESI)
       .then((yanit) => yanit.json())
@@ -46,10 +40,10 @@ export default function HaritaGorunumu() {
       .catch((hata) => console.error('Nesneler cekilirken hata:', hata));
   }, []);
 
-  // Haritaya tiklandiginda calisir: kullanicidan isim alir, backend'e kaydeder
+  // Haritaya tiklandiginda yeni Nokta olustur (Create)
   const haritayaTiklandi = async (enlem: number, boylam: number) => {
     const ad = window.prompt('Bu nokta için bir isim gir:');
-    if (!ad) return; // kullanici iptal etti, bir sey yapma
+    if (!ad) return;
 
     const yeniNesne = {
       ad,
@@ -65,7 +59,6 @@ export default function HaritaGorunumu() {
       });
       const olusturulanNesne = await yanit.json();
 
-      // Yeni nesneyi sayfayi yeniden yuklemeden ekrana hemen ekle
       setNesneler((oncekiler) => [
         ...oncekiler,
         {
@@ -77,6 +70,43 @@ export default function HaritaGorunumu() {
       ]);
     } catch (hata) {
       console.error('Nesne olusturulurken hata:', hata);
+    }
+  };
+
+  // Nesneyi sil (Delete)
+  const nesneyiSil = async (id: number) => {
+    const eminMisin = window.confirm('Bu nesneyi silmek istediğine emin misin?');
+    if (!eminMisin) return;
+
+    try {
+      await fetch(`${API_ADRESI}/${id}`, { method: 'DELETE' });
+      setNesneler((oncekiler) => oncekiler.filter((n) => n.id !== id));
+    } catch (hata) {
+      console.error('Nesne silinirken hata:', hata);
+    }
+  };
+
+  // Nokta surukleyip birakildiginda yeni konumu backend'e kaydet (Update)
+  const noktaTasindi = async (id: number, ad: string, yeniEnlem: number, yeniBoylam: number) => {
+    const guncelNesne = {
+      ad,
+      tur: 'Nokta',
+      geometri: { type: 'Point', coordinates: [yeniBoylam, yeniEnlem] },
+    };
+
+    try {
+      const yanit = await fetch(`${API_ADRESI}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(guncelNesne),
+      });
+      const guncellenenNesne = await yanit.json();
+
+      setNesneler((oncekiler) =>
+        oncekiler.map((n) => (n.id === id ? { ...n, geometry: guncellenenNesne.geometri } : n))
+      );
+    } catch (hata) {
+      console.error('Nesne guncellenirken hata:', hata);
     }
   };
 
@@ -95,8 +125,24 @@ export default function HaritaGorunumu() {
         if (geometry.type === 'Point') {
           const [boylam, enlem] = geometry.coordinates;
           return (
-            <Marker key={id} position={[enlem, boylam]} icon={noktaIkonu}>
-              <Popup>{properties.ad || 'Isimsiz Nokta'}</Popup>
+            <Marker
+              key={id}
+              position={[enlem, boylam]}
+              icon={noktaIkonu}
+              draggable={true}
+              eventHandlers={{
+                dragend: (olay) => {
+                  const yeniKonum = olay.target.getLatLng();
+                  noktaTasindi(id, properties.ad, yeniKonum.lat, yeniKonum.lng);
+                },
+              }}
+            >
+              <Popup>
+                <div>
+                  <p>{properties.ad || 'Isimsiz Nokta'}</p>
+                  <button onClick={() => nesneyiSil(id)}>Sil</button>
+                </div>
+              </Popup>
             </Marker>
           );
         }
