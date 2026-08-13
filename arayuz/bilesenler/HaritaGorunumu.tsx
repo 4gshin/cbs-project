@@ -14,19 +14,10 @@ const noktaIkonu = new L.Icon({
   shadowSize: [41, 41],
 });
 
-const API_ADRESI = 'http://localhost:5050/api/nesneler';
-
-// Ortak dugme stili - sistem karanlik/aydinlik moduna bagli olmadan hep okunakli olsun
-const dugmeStili = (renk: string) => ({
-  background: renk,
-  color: 'white',
-  border: 'none',
-  padding: '6px 12px',
-  borderRadius: '4px',
-  cursor: 'pointer',
-  fontWeight: 600,
-  fontSize: '13px',
-});
+// Deploy sonrasi bu adres degisecek: yerelde .env.local'daki, canlida Vercel'deki
+// NEXT_PUBLIC_API_URL degiskeninden okunur. Hicbiri yoksa yerel backend'e duser.
+const API_TEMEL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
+const API_ADRESI = `${API_TEMEL}/api/nesneler`;
 
 function TiklamaDinleyici({
   onHaritayaTikla,
@@ -48,7 +39,6 @@ export default function HaritaGorunumu() {
   const [cizimModu, setCizimModu] = useState<'yok' | 'Cizgi' | 'Poligon'>('yok');
   const [geciciNoktalar, setGeciciNoktalar] = useState<[number, number][]>([]);
 
-  // BONUS: mekansal iliski kontrolu icin secilen iki nesne ve sonuc
   const [iliskiId1, setIliskiId1] = useState<string>('');
   const [iliskiId2, setIliskiId2] = useState<string>('');
   const [iliskiSonucu, setIliskiSonucu] = useState<any>(null);
@@ -217,7 +207,6 @@ export default function HaritaGorunumu() {
     }
   };
 
-  // BONUS: iki secili nesne arasindaki mekansal iliskiyi backend'den sorgula
   const iliskiyiKontrolEt = async () => {
     if (!iliskiId1 || !iliskiId2) {
       window.alert('Lütfen iki nesne seç.');
@@ -239,28 +228,23 @@ export default function HaritaGorunumu() {
 
   return (
     <>
+      {/* Marka rozeti */}
+      <div
+        className="cbs-panel"
+        style={{ position: 'absolute', bottom: 16, left: 16, zIndex: 1000, padding: '8px 12px' }}
+      >
+        <span className="cbs-marka">
+          <span>CBS</span> Projesi — Ankara
+        </span>
+      </div>
+
       {/* BONUS: Mekansal iliski kontrol paneli */}
       <div
-        style={{
-          position: 'absolute',
-          top: 10,
-          right: 10,
-          zIndex: 1000,
-          background: 'white',
-          padding: '10px',
-          borderRadius: '6px',
-          boxShadow: '0 1px 5px rgba(0,0,0,0.4)',
-          width: '240px',
-        }}
+        className="cbs-panel"
+        style={{ position: 'absolute', top: 16, right: 16, zIndex: 1000, width: '250px' }}
       >
-        <p style={{ margin: '0 0 6px 0', fontWeight: 700, color: '#111827', fontSize: '13px' }}>
-          Mekansal İlişki Kontrolü (Bonus)
-        </p>
-        <select
-          value={iliskiId1}
-          onChange={(olay) => setIliskiId1(olay.target.value)}
-          style={{ width: '100%', marginBottom: '6px', padding: '4px' }}
-        >
+        <p className="cbs-baslik">Mekansal İlişki Kontrolü (Bonus)</p>
+        <select className="cbs-secim" value={iliskiId1} onChange={(olay) => setIliskiId1(olay.target.value)}>
           <option value="">1. Nesneyi Seç</option>
           {nesneler.map((n) => (
             <option key={n.id} value={n.id}>
@@ -268,11 +252,7 @@ export default function HaritaGorunumu() {
             </option>
           ))}
         </select>
-        <select
-          value={iliskiId2}
-          onChange={(olay) => setIliskiId2(olay.target.value)}
-          style={{ width: '100%', marginBottom: '6px', padding: '4px' }}
-        >
+        <select className="cbs-secim" value={iliskiId2} onChange={(olay) => setIliskiId2(olay.target.value)}>
           <option value="">2. Nesneyi Seç</option>
           {nesneler.map((n) => (
             <option key={n.id} value={n.id}>
@@ -280,56 +260,60 @@ export default function HaritaGorunumu() {
             </option>
           ))}
         </select>
-        <button onClick={iliskiyiKontrolEt} style={{ ...dugmeStili('#7c3aed'), width: '100%' }}>
+        <button
+          onClick={iliskiyiKontrolEt}
+          className="cbs-buton cbs-buton-birincil"
+          style={{ width: '100%' }}
+        >
           İlişkiyi Kontrol Et
         </button>
 
         {iliskiSonucu && (
-          <div style={{ marginTop: '8px', fontSize: '13px', color: '#111827' }}>
-            <p style={{ margin: '2px 0' }}>{iliskiSonucu.kesisiyor ? '✅' : '❌'} Kesişiyor (ST_Intersects)</p>
-            <p style={{ margin: '2px 0' }}>
+          <div style={{ marginTop: '10px', fontSize: '13px' }}>
+            <p style={{ margin: '3px 0', fontWeight: 500 }}>
+              {iliskiSonucu.kesisiyor ? '✅' : '❌'} Kesişiyor (ST_Intersects)
+            </p>
+            <p style={{ margin: '3px 0', fontWeight: 500 }}>
               {iliskiSonucu.icinde ? '✅' : '❌'} 1. nesne 2.'nin içinde (ST_Within)
             </p>
-            <p style={{ margin: '2px 0' }}>
+            <p style={{ margin: '3px 0', fontWeight: 500 }}>
               {iliskiSonucu.temas_ediyor ? '✅' : '❌'} Temas ediyor (ST_Touches)
             </p>
           </div>
         )}
       </div>
 
+      {/* Cizim kontrol paneli */}
       <div
+        className="cbs-panel"
         style={{
           position: 'absolute',
-          top: 10,
-          left: 50,
+          top: 16,
+          left: 60,
           zIndex: 1000,
-          background: 'white',
-          padding: '8px',
-          borderRadius: '6px',
-          boxShadow: '0 1px 5px rgba(0,0,0,0.4)',
           display: 'flex',
-          gap: '6px',
+          gap: '8px',
           alignItems: 'center',
         }}
       >
         {cizimModu === 'yok' ? (
           <>
-            <button onClick={() => cizimModunuBaslat('Cizgi')} style={dugmeStili('#2563eb')}>
+            <button onClick={() => cizimModunuBaslat('Cizgi')} className="cbs-buton cbs-buton-birincil">
               Çizgi Çiz
             </button>
-            <button onClick={() => cizimModunuBaslat('Poligon')} style={dugmeStili('#16a34a')}>
+            <button onClick={() => cizimModunuBaslat('Poligon')} className="cbs-buton cbs-buton-basari">
               Poligon Çiz
             </button>
           </>
         ) : (
           <>
-            <span style={{ color: '#111827', fontWeight: 500, fontSize: '13px' }}>
+            <span style={{ fontWeight: 500, fontSize: '13px' }}>
               {cizimModu === 'Cizgi' ? 'Çizgi' : 'Poligon'} çiziliyor ({geciciNoktalar.length} nokta)
             </span>
-            <button onClick={cizimiBitir} style={dugmeStili('#16a34a')}>
+            <button onClick={cizimiBitir} className="cbs-buton cbs-buton-basari">
               Bitir
             </button>
-            <button onClick={cizimiIptalEt} style={dugmeStili('#dc2626')}>
+            <button onClick={cizimiIptalEt} className="cbs-buton cbs-buton-tehlike">
               İptal
             </button>
           </>
@@ -345,10 +329,10 @@ export default function HaritaGorunumu() {
         <TiklamaDinleyici onHaritayaTikla={haritayaTiklandi} />
 
         {cizimModu === 'Cizgi' && geciciNoktalar.length > 1 && (
-          <Polyline positions={geciciNoktalar} pathOptions={{ color: 'red', dashArray: '6' }} />
+          <Polyline positions={geciciNoktalar} pathOptions={{ color: '#4f46e5', dashArray: '6' }} />
         )}
         {cizimModu === 'Poligon' && geciciNoktalar.length > 1 && (
-          <Polygon positions={geciciNoktalar} pathOptions={{ color: 'red', dashArray: '6' }} />
+          <Polygon positions={geciciNoktalar} pathOptions={{ color: '#4f46e5', dashArray: '6' }} />
         )}
 
         {nesneler.map((ozellik) => {
@@ -370,9 +354,9 @@ export default function HaritaGorunumu() {
                 }}
               >
                 <Popup>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <p style={{ margin: 0, color: '#111827' }}>{properties.ad || 'Isimsiz Nokta'}</p>
-                    <button onClick={() => nesneyiSil(id)} style={dugmeStili('#dc2626')}>
+                  <div className="cbs-popup">
+                    <p>{properties.ad || 'Isimsiz Nokta'}</p>
+                    <button onClick={() => nesneyiSil(id)} className="cbs-buton cbs-buton-tehlike">
                       Sil
                     </button>
                   </div>
@@ -384,17 +368,17 @@ export default function HaritaGorunumu() {
           if (geometry.type === 'LineString') {
             const konumlar = geometry.coordinates.map(([boylam, enlem]: number[]) => [enlem, boylam]);
             return (
-              <Polyline key={id} positions={konumlar}>
+              <Polyline key={id} positions={konumlar} pathOptions={{ color: '#4f46e5', weight: 4 }}>
                 <Popup>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <p style={{ margin: 0, color: '#111827' }}>{properties.ad || 'Isimsiz Cizgi'}</p>
+                  <div className="cbs-popup">
+                    <p>{properties.ad || 'Isimsiz Cizgi'}</p>
                     <button
                       onClick={() => nesneyiYenidenAdlandir(id, 'Cizgi', geometry)}
-                      style={dugmeStili('#2563eb')}
+                      className="cbs-buton cbs-buton-birincil"
                     >
                       Adını Değiştir
                     </button>
-                    <button onClick={() => nesneyiSil(id)} style={dugmeStili('#dc2626')}>
+                    <button onClick={() => nesneyiSil(id)} className="cbs-buton cbs-buton-tehlike">
                       Sil
                     </button>
                   </div>
@@ -406,17 +390,21 @@ export default function HaritaGorunumu() {
           if (geometry.type === 'Polygon') {
             const konumlar = geometry.coordinates[0].map(([boylam, enlem]: number[]) => [enlem, boylam]);
             return (
-              <Polygon key={id} positions={konumlar}>
+              <Polygon
+                key={id}
+                positions={konumlar}
+                pathOptions={{ color: '#059669', fillColor: '#059669', fillOpacity: 0.25 }}
+              >
                 <Popup>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <p style={{ margin: 0, color: '#111827' }}>{properties.ad || 'Isimsiz Poligon'}</p>
+                  <div className="cbs-popup">
+                    <p>{properties.ad || 'Isimsiz Poligon'}</p>
                     <button
                       onClick={() => nesneyiYenidenAdlandir(id, 'Poligon', geometry)}
-                      style={dugmeStili('#2563eb')}
+                      className="cbs-buton cbs-buton-birincil"
                     >
                       Adını Değiştir
                     </button>
-                    <button onClick={() => nesneyiSil(id)} style={dugmeStili('#dc2626')}>
+                    <button onClick={() => nesneyiSil(id)} className="cbs-buton cbs-buton-tehlike">
                       Sil
                     </button>
                   </div>
